@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Handbrake UI</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+
+        /* ==========================================
+           HUD BASE STYLES
+           ========================================== */
+        #handbrake-indicator {
+            position: absolute;
+            display: none;  /* Oculto por defecto */
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 8px 16px 8px 12px;
+            border-radius: 10px;
+            border-left: 4px solid #888;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            user-select: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            opacity: 0.7;
+            transform-origin: bottom left;
+        }
+
+        /* Mostrar solo cuando el script lo indique */
+        #handbrake-indicator.visible {
+            display: flex;
+        }
+
+        /* ==========================================
+           POSICIONES
+           ========================================== */
+        #handbrake-indicator.position-bottom-left {
+            bottom: 30px;
+            left: 30px;
+            transform-origin: bottom left;
+        }
+        #handbrake-indicator.position-bottom-right {
+            bottom: 30px;
+            right: 30px;
+            transform-origin: bottom right;
+        }
+        #handbrake-indicator.position-top-left {
+            top: 30px;
+            left: 30px;
+            transform-origin: top left;
+        }
+        #handbrake-indicator.position-top-right {
+            top: 30px;
+            right: 30px;
+            transform-origin: top right;
+        }
+
+        /* ==========================================
+           ESTADO ACTIVADO (ON)
+           ========================================== */
+        #handbrake-indicator.active {
+            border-left-color: #ff4444;
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.85);
+        }
+
+        #handbrake-indicator.active .hud-status {
+            color: #ff4444;
+            background: rgba(255, 68, 68, 0.2);
+        }
+
+        /* ==========================================
+           ESTADO DESACTIVADO (OFF)
+           ========================================== */
+        #handbrake-indicator .hud-status {
+            color: #66cc66;
+            background: rgba(102, 204, 102, 0.15);
+        }
+
+        /* ==========================================
+           IMAGEN
+           ========================================== */
+        .icon-container {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .icon-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: all 0.3s ease;
+        }
+
+        /* ==========================================
+           TEXTO
+           ========================================== */
+        .hud-label {
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .hud-status {
+            font-size: 12px;
+            font-weight: bold;
+            padding: 2px 10px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        /* ==========================================
+           MODO SOLO TEXTO
+           ========================================== */
+        #handbrake-indicator.text-only .icon-container {
+            display: none;
+        }
+        #handbrake-indicator.text-only {
+            padding-left: 16px;
+        }
+
+        /* ==========================================
+           MODO SOLO IMAGEN
+           ========================================== */
+        #handbrake-indicator.image-only .hud-label,
+        #handbrake-indicator.image-only .hud-status {
+            display: none;
+        }
+        #handbrake-indicator.image-only {
+            padding: 8px;
+            border-radius: 50%;
+            min-width: 50px;
+            min-height: 50px;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.6);
+        }
+        #handbrake-indicator.image-only .icon-container {
+            width: 40px;
+            height: 40px;
+        }
+
+        /* Ocultar audios */
+        audio { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- ==========================================
+         HANDBRAKE HUD
+         ========================================== -->
+    <div id="handbrake-indicator" class="position-bottom-left">
+        <span class="icon-container">
+            <img id="handbrake-icon" src="images/handbrake_off.png" alt="Handbrake">
+        </span>
+        <span class="hud-label" id="hud-label">Handbrake</span>
+        <span class="hud-status off" id="hud-status">OFF</span>
+    </div>
+
+    <script>
+        // ==========================================
+        // DOM REFERENCES
+        // ==========================================
+        var indicator = document.getElementById('handbrake-indicator');
+        var iconImg = document.getElementById('handbrake-icon');
+        var labelEl = document.getElementById('hud-label');
+        var statusEl = document.getElementById('hud-status');
+
+        // Default values
+        var hudStyle = 'image_text';
+        var hudPosition = 'bottom-left';
+        var hudScale = 1.0;
+        var hudLabel = 'Handbrake';
+        var hudOnText = 'ON';
+        var hudOffText = 'OFF';
+
+        // ==========================================
+        // CONFIGURATION FROM LUA
+        // ==========================================
+        window.addEventListener('message', function(event) {
+            var data = event.data;
+            var type = data.type;
+
+            // Mostrar/ocultar HUD según vehículo
+            if (type === 'setVehicleStatus') {
+                var inVehicle = data.data.inVehicle;
+                if (inVehicle) {
+                    indicator.classList.add('visible');
+                } else {
+                    indicator.classList.remove('visible');
+                    // Resetear estado visual
+                    indicator.classList.remove('active');
+                    iconImg.src = 'images/handbrake_off.png';
+                    statusEl.textContent = hudOffText;
+                    statusEl.className = 'hud-status';
+                }
+            }
+
+            // Apply HUD config
+            if (type === 'hudConfig') {
+                hudStyle = data.data.hudStyle || 'image_text';
+                hudPosition = data.data.hudPosition || 'bottom-left';
+                hudScale = data.data.hudScale || 1.0;
+                hudLabel = data.data.hudLabel || 'Handbrake';
+                hudOnText = data.data.hudOnText || 'ON';
+                hudOffText = data.data.hudOffText || 'OFF';
+
+                // Reset classes
+                indicator.className = '';
+
+                // Apply position class
+                indicator.classList.add('position-' + hudPosition);
+
+                // Apply style class
+                if (hudStyle === 'text') {
+                    indicator.classList.add('text-only');
+                } else if (hudStyle === 'image') {
+                    indicator.classList.add('image-only');
+                }
+
+                // Apply scale
+                indicator.style.transform = 'scale(' + hudScale + ')';
+
+                // Update label
+                labelEl.textContent = hudLabel;
+            }
+
+            // Update handbrake state
+            if (type === 'updateHandbrake') {
+                var engaged = data.data.engaged;
+
+                if (engaged) {
+                    indicator.classList.add('active');
+                    iconImg.src = 'images/handbrake_on.png';
+                    statusEl.textContent = hudOnText;
+                    statusEl.className = 'hud-status';
+                } else {
+                    indicator.classList.remove('active');
+                    iconImg.src = 'images/handbrake_off.png';
+                    statusEl.textContent = hudOffText;
+                    statusEl.className = 'hud-status';
+                }
+            }
+        });
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        fetch('https://' + GetParentResourceName() + '/getHudConfig', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+            body: JSON.stringify({})
+        }).then(resp => resp.json()).then(function(data) {
+            window.dispatchEvent(new MessageEvent('message', {
+                data: { type: 'hudConfig', data: data }
+            }));
+        }).catch(function(err) {
+            console.log('Error getting HUD config:', err);
+            // Fallback
+            window.dispatchEvent(new MessageEvent('message', {
+                data: { type: 'hudConfig', data: { hudStyle: 'image_text', hudPosition: 'bottom-left', hudScale: 1.0, hudLabel: 'Handbrake', hudOnText: 'ON', hudOffText: 'OFF' } }
+            }));
+        });
+
+        // Initialize as OFF and hidden
+        window.dispatchEvent(new MessageEvent('message', {
+            data: { type: 'updateHandbrake', data: { engaged: false } }
+        }));
+        window.dispatchEvent(new MessageEvent('message', {
+            data: { type: 'setVehicleStatus', data: { inVehicle: false } }
+        }));
+    </script>
+</body>
+</html>
