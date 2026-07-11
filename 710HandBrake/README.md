@@ -29,7 +29,7 @@ A **standalone**, realistic handbrake system for FiveM servers. Designed for ser
 
 ### 2. Add to server.cfg
 - Add the following line to your server.cfg:
-ensure 710HandBrake
+ensure 710Handbrake
 
 ### 3. Start Your Server
 - Restart your server
