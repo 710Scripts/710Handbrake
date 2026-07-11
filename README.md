@@ -168,9 +168,9 @@ Full license: https://creativecommons.org/licenses/by-nc-nd/4.0/
 Author: 710Scripts
 
 📞 Support
-Issues: GitHub Issues
+Issues: GitHub Issues or Social Media
 
-Discord: coming soon
+Discord: https://discord.gg/aJ2wgTAB8
 
 🚀 Show Your Support
 If you find this script useful, please consider:
